@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emedgene Batch CSV Generator</title>
+  <script type="module">(function(){const t=document.createElement("link").relList;if(t&&t.supports&&t.supports("modulepreload"))return;for(const s of document.querySelectorAll('link[rel="modulepreload"]'))o(s);new MutationObserver(s=>{for(const c of s)if(c.type==="childList")for(const r of c.addedNodes)r.tagName==="LINK"&&r.rel==="modulepreload"&&o(r)}).observe(document,{childList:!0,subtree:!0});function n(s){const c={};return s.integrity&&(c.integrity=s.integrity),s.referrerPolicy&&(c.referrerPolicy=s.referrerPolicy),s.crossOrigin==="use-credentials"?c.credentials="include":s.crossOrigin==="anonymous"?c.credentials="omit":c.credentials="same-origin",c}function o(s){if(s.ep)return;s.ep=!0;const c=n(s);fetch(s.href,c)}})();const l={vcfFiles:[],cases:[],nextCaseId:1,nextSampleId:1};function g(e){return e.endsWith(".vcf")||e.endsWith(".vcf.gz")}function m(e){const t=Array.from(e).filter(n=>g(n.name)).map(n=>({name:n.name,path:n.webkitRelativePath||n.name})).filter(n=>!l.vcfFiles.some(o=>o.path===n.path));if(t.length===0){Array.from(e).length>0&&alert("No VCF files found. Only .vcf and .vcf.gz files are supported.");return}l.vcfFiles.push(...t),h(),v(),u()}function h(){const e=document.getElementById("vcf-list");e.classList.remove("hidden"),e.innerHTML=`
+    <div class="vcf-list-header">
+      <strong>${l.vcfFiles.length} VCF file${l.vcfFiles.length!==1?"s":""} discovered</strong>
+      <button class="btn btn-danger-sm" id="clear-files-btn">Clear</button>
+    </div>
+    <ul>
+      ${l.vcfFiles.map(t=>`<li><span class="vcf-icon">🧬</span>${t.path}</li>`).join("")}
+    </ul>
+  `,document.getElementById("clear-files-btn").addEventListener("click",()=>{l.vcfFiles=[],e.classList.add("hidden"),e.innerHTML="",v()})}function v(){document.querySelectorAll('select[name="vcf_file"]').forEach(e=>{const t=e.value;e.innerHTML='<option value="">-- Select VCF file --</option>'+l.vcfFiles.map(n=>`<option value="${n.path}" ${n.path===t?"selected":""}>${n.path}</option>`).join(""),l.vcfFiles.some(n=>n.path===t)||(e.value="")}),i()}function y(){const e=l.nextCaseId++,t={id:e,samples:[]};l.cases.push(t);const o=document.getElementById("case-template").content.cloneNode(!0).querySelector(".case-block");o.dataset.caseId=e,o.querySelector(".case-num").textContent=e,o.querySelector(".remove-case-btn").addEventListener("click",()=>b(e)),o.querySelector(".add-sample-btn").addEventListener("click",()=>f(e)),document.getElementById("empty-cases").classList.add("hidden"),document.getElementById("cases-container").appendChild(o),f(e)}function b(e){l.cases=l.cases.filter(t=>t.id!==e),document.querySelector(`.case-block[data-case-id="${e}"]`).remove(),l.cases.length===0&&document.getElementById("empty-cases").classList.remove("hidden"),i(),u()}function f(e){const t=l.cases.find(a=>a.id===e),n=l.nextSampleId++;t.samples.push({id:n});const s=document.getElementById("sample-template").content.cloneNode(!0).querySelector(".sample-row");s.dataset.sampleId=n,s.querySelector(".sample-label").textContent=`Sample ${t.samples.length}`;const c=s.querySelector('select[name="vcf_file"]');c.innerHTML='<option value="">-- Select VCF file --</option>'+l.vcfFiles.map(a=>`<option value="${a.path}">${a.path}</option>`).join(""),s.querySelectorAll("input, select, textarea").forEach(a=>{a.addEventListener("input",i),a.addEventListener("change",i)}),s.querySelector(".remove-sample-btn").addEventListener("click",()=>{S(e,n,s)}),document.querySelector(`.case-block[data-case-id="${e}"] .samples-container`).appendChild(s),i()}function S(e,t,n){const o=l.cases.find(s=>s.id===e);o.samples=o.samples.filter(s=>s.id!==t),n.remove(),i(),u()}const p=["Case Type","Family Id","BioSample Name","Files Names","Storage Provider Id","Sample Type","Phenotypes","Relation","Gender","Date Of Birth","Boost Genes","Execute now","Gene List Id","Kit Id","Label Id","Selected Preset","Clinical Notes"];function L(e){const t=n=>{const o=e.querySelector(`[name="${n}"]`);return o?o.value.trim():""};return{"Case Type":t("case_type"),"Family Id":t("family_id"),"BioSample Name":t("biosample_name"),"Files Names":t("vcf_file"),"Storage Provider Id":t("storage_provider_id"),"Sample Type":t("vcf_file")?"VCF":"",Phenotypes:t("phenotypes"),Relation:t("relation"),Gender:t("gender"),"Date Of Birth":t("dob"),"Boost Genes":t("boost_genes"),"Execute now":t("execute_now"),"Gene List Id":t("gene_list_id"),"Kit Id":t("kit_id"),"Label Id":t("label_id"),"Selected Preset":t("selected_preset"),"Clinical Notes":t("clinical_notes")}}function w(e){if(e==null)return"";const t=String(e);return t.includes(",")||t.includes('"')||t.includes(`
+`)?'"'+t.replace(/"/g,'""')+'"':t}function E(){const e=[];return document.querySelectorAll(".case-block").forEach(t=>{t.querySelectorAll(".sample-row").forEach(n=>{e.push(L(n))})}),e}function C(e){const t=p.join(","),n=e.map(o=>p.map(s=>w(o[s]??"")).join(","));return[t,...n].join(`
+`)}function I(e){return!e["Case Type"]||!e["Family Id"]||!e.Phenotypes}function i(){const e=E(),t=document.getElementById("csv-preview-wrap");if(e.length===0){t.innerHTML='<div class="empty-state"><p>Add and configure cases above to preview the CSV.</p></div>',u();return}const n=e.map((r,a)=>I(r)?`Row ${a+1}: Missing required field(s).`:null).filter(Boolean),o=C(e),s=o.split(`
+`).slice(0,6),c=o.split(`
+`).length>6;t.innerHTML=`
+    ${n.length?`<div class="warnings">${n.map(r=>`<p>⚠ ${r}</p>`).join("")}</div>`:""}
+    <div class="csv-stats">${e.length} row${e.length!==1?"s":""} · ${p.length} columns</div>
+    <pre class="csv-preview">${F(s.join(`
+`))}${c?`
+…`:""}</pre>
+  `,u(o,e,n)}function F(e){return e.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function u(e,t,n){const o=document.getElementById("download-btn"),s=t&&t.length>0,c=n&&n.length>0;o.disabled=!s,o.title=c?"Some rows have missing required fields":"",o.className=c?"btn btn-warning":"btn btn-success",o.textContent=c?"⬇ Download CSV (with warnings)":"⬇ Download CSV",o.onclick=s?()=>$(e):null}function $(e){const t=new Blob([e],{type:"text/csv;charset=utf-8;"}),n=URL.createObjectURL(t),o=document.createElement("a");o.href=n,o.download=`emedgene_batch_${new Date().toISOString().slice(0,10)}.csv`,o.click(),URL.revokeObjectURL(n)}document.getElementById("folder-input").addEventListener("change",e=>m(e.target.files));document.getElementById("file-input").addEventListener("change",e=>m(e.target.files));document.getElementById("add-case-btn").addEventListener("click",y);const d=document.getElementById("drop-zone");d.addEventListener("dragover",e=>{e.preventDefault(),d.classList.add("drag-over")});d.addEventListener("dragleave",()=>d.classList.remove("drag-over"));d.addEventListener("drop",e=>{e.preventDefault(),d.classList.remove("drag-over"),m(e.dataTransfer.files)});
+</script>
+  <style>*,*:before,*:after{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh;padding:24px 16px 60px}#app{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:24px}header{text-align:center;padding:8px 0 4px}header h1{font-size:1.75rem;font-weight:700;color:#0f172a;letter-spacing:-.02em}header .subtitle{color:#64748b;margin-top:6px;font-size:.95rem}.card{background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 3px #00000012,0 4px 16px #0000000a}.step-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}.step-header h2{font-size:1.1rem;font-weight:600;flex:1}.step-badge{width:28px;height:28px;background:#3b82f6;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0}.hint{font-size:.85rem;color:#64748b;margin-bottom:16px}.hint code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:.82rem}.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:.85rem;font-weight:500;cursor:pointer;border:none;transition:background .15s,opacity .15s;text-decoration:none;white-space:nowrap}.btn:disabled{opacity:.45;cursor:not-allowed}.btn-primary{background:#3b82f6;color:#fff}.btn-primary:hover:not(:disabled){background:#2563eb}.btn-secondary{background:#e2e8f0;color:#334155}.btn-secondary:hover:not(:disabled){background:#cbd5e1}.btn-outline{background:transparent;color:#3b82f6;border:1.5px solid #3b82f6}.btn-outline:hover:not(:disabled){background:#eff6ff}.btn-success{background:#22c55e;color:#fff}.btn-success:hover:not(:disabled){background:#16a34a}.btn-warning{background:#f59e0b;color:#fff}.btn-warning:hover:not(:disabled){background:#d97706}.btn-danger-sm{background:#fee2e2;color:#dc2626;font-size:.78rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer}.btn-danger-sm:hover{background:#fecaca}.btn-danger-xs{background:transparent;color:#94a3b8;font-size:1.1rem;padding:2px 6px;border:none;cursor:pointer;border-radius:4px;line-height:1}.btn-danger-xs:hover{color:#dc2626;background:#fee2e2}.drop-zone{border:2px dashed #cbd5e1;border-radius:10px;padding:32px 16px;text-align:center;transition:border-color .2s,background .2s;cursor:pointer}.drop-zone:hover,.drop-zone.drag-over{border-color:#3b82f6;background:#eff6ff}.drop-zone svg{width:40px;height:40px;color:#94a3b8;margin:0 auto 12px;display:block}.drop-zone p{color:#64748b;font-size:.9rem;margin-bottom:4px}.drop-zone .or{font-size:.78rem;color:#94a3b8;margin:8px 0}.drop-zone label.btn{display:inline-flex;margin:4px}.vcf-list{margin-top:16px}.vcf-list.hidden{display:none}.vcf-list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.9rem;color:#475569}.vcf-list ul{list-style:none;max-height:180px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:4px 0}.vcf-list li{padding:6px 14px;font-size:.82rem;color:#334155;font-family:ui-monospace,monospace;border-bottom:1px solid #f1f5f9}.vcf-list li:last-child{border-bottom:none}.vcf-icon{margin-right:8px}.case-block{border:1.5px solid #e2e8f0;border-radius:10px;padding:18px;margin-bottom:16px}.case-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.case-header h3{font-size:1rem;font-weight:600;color:#1e293b}.add-sample-btn{margin-top:12px;font-size:.82rem}.sample-row{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:12px}.sample-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.sample-label{font-size:.82rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}.form-group{display:flex;flex-direction:column;gap:4px}.form-group.full-width{grid-column:1 / -1}.form-group label{font-size:.78rem;font-weight:500;color:#475569}.form-group .req{color:#ef4444}.form-group .hint-inline{color:#94a3b8;font-weight:400;font-size:.73rem}.form-group input,.form-group select,.form-group textarea{padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.85rem;color:#1e293b;background:#fff;transition:border-color .15s;width:100%}.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px #3b82f61a}.form-group textarea{resize:vertical}.empty-state{text-align:center;padding:32px;color:#94a3b8;font-size:.9rem}.csv-stats{font-size:.82rem;color:#64748b;margin-bottom:8px}.csv-preview{background:#0f172a;color:#94a3b8;padding:16px;border-radius:8px;font-size:.78rem;overflow-x:auto;white-space:pre;font-family:ui-monospace,Cascadia Code,monospace;line-height:1.6;max-height:220px;overflow-y:auto}.warnings{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:12px}.warnings p{font-size:.82rem;color:#92400e;margin-bottom:2px}.warnings p:last-child{margin-bottom:0}
+</style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Emedgene Batch CSV Generator</h1>
+      <p class="subtitle">Generate batch case upload CSV files for Emedgene analysis</p>
+    </header>
+
+    <!-- Step 1: Discover VCF Files -->
+    <section class="card" id="step-discover">
+      <div class="step-header">
+        <span class="step-badge">1</span>
+        <h2>Discover VCF Files</h2>
+      </div>
+      <p class="hint">Select a folder containing your VCF files. All <code>.vcf</code> and <code>.vcf.gz</code> files will be detected automatically.</p>
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone-inner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+          <p>Drag &amp; drop VCF files here</p>
+          <p class="or">or</p>
+          <label class="btn btn-secondary" for="folder-input">Select Folder</label>
+          <input type="file" id="folder-input" webkitdirectory multiple accept=".vcf,.gz" hidden />
+          <label class="btn btn-outline" for="file-input">Select Files</label>
+          <input type="file" id="file-input" multiple accept=".vcf,.gz" hidden />
+        </div>
+      </div>
+      <div id="vcf-list" class="vcf-list hidden"></div>
+    </section>
+
+    <!-- Step 2: Add Cases -->
+    <section class="card" id="step-cases">
+      <div class="step-header">
+        <span class="step-badge">2</span>
+        <h2>Configure Cases</h2>
+        <button class="btn btn-primary" id="add-case-btn">+ Add Case</button>
+        <div class="batch-add-controls">
+          <label for="batch-count">Add multiple:</label>
+          <input type="number" id="batch-count" min="1" max="100" value="1" />
+          <button class="btn btn-outline" id="batch-add-btn" title="Add N cases at once">Batch Add</button>
+        </div>
+      </div>
+      <p class="hint">Each case represents a family. Assign VCF files and fill in metadata for each sample.</p>
+      <div id="cases-container">
+        <div class="empty-state" id="empty-cases">
+          <p>No cases yet. Click <strong>+ Add Case</strong> to begin.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Batch add handler -->
+    <script>
+    (function() {
+      const batchCountInput = document.getElementById('batch-count');
+      const batchAddBtn = document.getElementById('batch-add-btn');
+      const addCaseBtn = document.getElementById('add-case-btn');
+
+      batchAddBtn.addEventListener('click', () => {
+        const count = parseInt(batchCountInput.value, 10) || 1;
+        for (let i = 0; i < count; i++) {
+          addCaseBtn.click();
+        }
+        // Reset counter
+        batchCountInput.value = '1';
+      });
+
+      // Allow Enter key to trigger batch add
+      batchCountInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          batchAddBtn.click();
+        }
+      });
+    })();
+    </script>
+
+    <!-- Step 3: CSV Preview & Download -->
+    <section class="card" id="step-export">
+      <div class="step-header">
+        <span class="step-badge">3</span>
+        <h2>Export CSV</h2>
+        <button class="btn btn-success" id="download-btn" disabled>⬇ Download CSV</button>
+      </div>
+      <div id="csv-preview-wrap">
+        <div class="empty-state">
+          <p>Add and configure cases above to preview the CSV.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Case Template (hidden, cloned by JS) -->
+  <template id="case-template">
+    <div class="case-block" data-case-id="">
+      <div class="case-header">
+        <h3 class="case-title">Case <span class="case-num"></span></h3>
+        <button class="btn btn-danger-sm remove-case-btn">Remove</button>
+      </div>
+      <div class="samples-container"></div>
+      <button class="btn btn-outline add-sample-btn">+ Add Sample to this Case</button>
+    </div>
+  </template>
+
+  <!-- Sample Template (hidden, cloned by JS) -->
+  <template id="sample-template">
+    <div class="sample-row" data-sample-id="">
+      <div class="sample-header">
+        <span class="sample-label">Sample</span>
+        <button class="btn btn-danger-xs remove-sample-btn">×</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group required">
+          <label>Family ID <span class="req">*</span></label>
+          <input type="text" name="family_id" placeholder="e.g. FAM001" />
+        </div>
+        <div class="form-group required">
+          <label>Case Type <span class="req">*</span></label>
+          <select name="case_type">
+            <option value="">-- Select --</option>
+            <option value="Whole Genome">Whole Genome</option>
+            <option value="Exome">Exome</option>
+            <option value="Custom Panel">Custom Panel</option>
+            <option value="Array">Array</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>BioSample Name</label>
+          <input type="text" name="biosample_name" placeholder="e.g. Sample_001" />
+        </div>
+        <div class="form-group">
+          <label>Relation</label>
+          <select name="relation">
+            <option value="proband">Proband</option>
+            <option value="mother">Mother</option>
+            <option value="father">Father</option>
+            <option value="sibling">Sibling</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <select name="gender">
+            <option value="U">Unknown</option>
+            <option value="F">Female</option>
+            <option value="M">Male</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" name="dob" />
+        </div>
+        <div class="form-group">
+          <label>VCF File</label>
+          <select name="vcf_file">
+            <option value="">-- Select or type path --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Storage Provider ID</label>
+          <input type="number" name="storage_provider_id" placeholder="e.g. 1" />
+        </div>
+        <div class="form-group full-width">
+          <label>Phenotypes <span class="req">*</span> <span class="hint-inline">(HPO terms or IDs, semicolon-separated)</span></label>
+          <input type="text" name="phenotypes" placeholder="e.g. HP:0007686;HP:0000505 or Unaffected" />
+        </div>
+        <div class="form-group full-width">
+          <label>Clinical Notes</label>
+          <textarea name="clinical_notes" rows="2" placeholder="Optional free text notes"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Boost Genes</label>
+          <select name="boost_genes">
+            <option value="FALSE">FALSE</option>
+            <option value="TRUE">TRUE</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Execute Now</label>
+          <select name="execute_now">
+            <option value="TRUE">TRUE</option>
+            <option value="FALSE">FALSE</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Gene List ID</label>
+          <input type="number" name="gene_list_id" placeholder="Optional integer" />
+        </div>
+        <div class="form-group">
+          <label>Kit ID</label>
+          <input type="number" name="kit_id" placeholder="Optional integer" />
+        </div>
+        <div class="form-group">
+          <label>Label ID</label>
+          <input type="number" name="label_id" placeholder="Optional integer" />
+        </div>
+        <div class="form-group">
+          <label>Selected Preset</label>
+          <input type="text" name="selected_preset" placeholder='e.g. Default' />
+        </div>
+      </div>
+    </div>
+  </template>
+
+
+<!-- ===================== PANELAPP PANEL MANAGER ===================== -->
+<style>
+  /* ── Toggle tab (always visible on right edge) ───────────────────────────── */
+  #pa-toggle-tab {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1100;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    padding: .9rem .45rem;
+    border-radius: 8px 0 0 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    box-shadow: -2px 0 12px rgba(124,58,237,.25);
+    transition: background .15s;
+    font-family: inherit;
+  }
+  #pa-toggle-tab:hover { background: #6d28d9; }
+  #pa-toggle-tab .pa-tab-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    line-height: 1;
+  }
+  #pa-toggle-tab .pa-tab-icon { font-size: 1rem; line-height: 1; }
+
+  /* ── Docked side panel — pushes main content left, no overlay ───────────── */
+
+  /* Main content shifts left when panel is open */
+  #app {
+    transition: margin-right .25s cubic-bezier(.4,0,.2,1);
+  }
+  body.pa-panel-open #app {
+    margin-right: 450px;
+  }
+
+  #step-panelapp {
+    position: fixed;
+    top: 0; right: -470px;
+    width: 450px;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 200;
+    background: #fff;
+    border-left: 2px solid #e2e8f0;
+    border-radius: 0;
+    margin: 0;
+    padding: 1.1rem 1.1rem 2rem;
+    transition: right .25s cubic-bezier(.4,0,.2,1);
+    display: flex;
+    flex-direction: column;
+  }
+  #step-panelapp.pa-open { right: 0; }
+
+  /* Backdrop — removed; panel is docked not modal */
+  #pa-backdrop { display: none !important; }
+
+  /* Panel header row */
+  .pa-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: .85rem;
+    flex-shrink: 0;
+  }
+  .pa-panel-header h2 { margin: 0; font-size: 1.05rem; }
+  #pa-close-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.4rem; color: #94a3b8; line-height: 1;
+    padding: .1rem .3rem; border-radius: 4px;
+  }
+  #pa-close-btn:hover { background: #f1f5f9; color: #475569; }
+
+  /* Import phenotype button */
+  .pa-import-row {
+    display: flex; gap: .5rem; align-items: center;
+    flex-wrap: wrap; margin-bottom: .6rem;
+  }
+  #pa-import-btn {
+    font-size: .78rem; padding: .25rem .65rem;
+    background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd;
+    border-radius: 6px; cursor: pointer; white-space: nowrap; font-family: inherit;
+  }
+  #pa-import-btn:hover { background: #ddd6fe; }
+  .pa-import-hint { font-size: .75rem; color: #94a3b8; font-style: italic; }
+
+  /* ---- Existing PanelApp styles ---- */
+  .pa-badge {
+    background: #7c3aed; font-size: .75rem; letter-spacing: .05em;
+    padding: 0 .45rem; border-radius: 999px;
+  }
+  .pa-controls { display: flex; flex-direction: column; gap: .75rem; }
+  .pa-search-row { display: flex; gap: .6rem; align-items: flex-end; }
+  .pa-search-row .form-group { margin: 0; flex: 1; }
+  .pa-dir-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+  .pa-dir-label { font-size: .82rem; color: #64748b; font-style: italic; }
+
+  /* Results */
+  .pa-results { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .pa-source-heading {
+    font-size: 1rem; font-weight: 600; color: #1e293b;
+    margin: 0 0 .5rem; padding-bottom: .35rem;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .pa-source-heading .pa-source-tag {
+    font-size: .7rem; font-weight: 500; padding: .15rem .4rem;
+    border-radius: 4px; vertical-align: middle; margin-left: .4rem;
+  }
+  .tag-au { background: #dbeafe; color: #1d4ed8; }
+  .tag-uk { background: #dcfce7; color: #15803d; }
+
+  /* Compact panel rows (no table — fits panel width without h-scroll) */
+  .pa-panel-list { display: flex; flex-direction: column; }
+  .pa-panel-row {
+    padding: .5rem .3rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: .5rem;
+    align-items: start;
+    border-radius: 6px;
+    transition: background .1s;
+  }
+  .pa-panel-row:last-child { border-bottom: none; }
+  .pa-panel-row.pa-selected { background: #faf5ff; }
+  .pa-row-check { padding-top: .25rem; }
+  .pa-row-check input[type="checkbox"] {
+    width: 15px; height: 15px; accent-color: #7c3aed; cursor: pointer;
+  }
+  .pa-row-content { display: flex; flex-direction: column; gap: .25rem; }
+  .pa-row-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: .5rem;
+  }
+  .pa-row-bottom {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: .5rem;
+  }
+  .pa-row-name {
+    font-weight: 600; font-size: .875rem; color: #1e293b;
+    text-decoration: none; flex: 1; line-height: 1.3;
+  }
+  .pa-row-name:hover { color: #6d28d9; text-decoration: underline; }
+  .pa-row-meta {
+    font-size: .75rem; color: #94a3b8;
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Push to Clinical Notes button */
+  #pa-push-btn {
+    font-size: .78rem; padding: .25rem .65rem;
+    background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;
+    border-radius: 6px; cursor: pointer; white-space: nowrap; font-family: inherit;
+    display: flex; align-items: center; gap: .3rem;
+  }
+  #pa-push-btn:hover:not(:disabled) { background: #a7f3d0; }
+  #pa-push-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .pa-push-count {
+    background: #065f46; color: #fff;
+    font-size: .65rem; font-weight: 700;
+    padding: .1rem .35rem; border-radius: 999px;
+  }
+
+  /* Suggestions dropdown */
+  .pa-suggest-wrap { position: relative; flex: 1; }
+  .pa-suggestions {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 0 0 8px 8px; box-shadow: 0 4px 16px rgba(0,0,0,.1);
+    z-index: 1200; max-height: 260px; overflow-y: auto;
+  }
+  .pa-sug-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .45rem .7rem; cursor: pointer; gap: .5rem;
+    font-size: .83rem; border-bottom: 1px solid #f8fafc;
+  }
+  .pa-sug-item:last-child { border-bottom: none; }
+  .pa-sug-item:hover, .pa-sug-item.active { background: #f5f3ff; }
+  .pa-sug-name { flex: 1; color: #1e293b; }
+  .pa-sug-tag {
+    font-size: .65rem; font-weight: 700; padding: .1rem .35rem;
+    border-radius: 4px; white-space: nowrap; flex-shrink: 0;
+  }
+  .pa-sug-loading {
+    padding: .55rem .7rem; font-size: .8rem; color: #94a3b8; font-style: italic;
+  }
+
+  /* Status tags */
+  .pa-tag {
+    display: inline-block; padding: .2rem .55rem; border-radius: 999px;
+    font-size: .75rem; font-weight: 600; white-space: nowrap;
+  }
+  .pa-up-to-date  { background: #dcfce7; color: #15803d; }
+  .pa-needs-update{ background: #fef3c7; color: #92400e; }
+  .pa-not-local   { background: #f1f5f9; color: #64748b; }
+
+  /* Legend */
+  .pa-legend { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .5rem; }
+  .pa-legend .pa-tag { cursor: default; }
+
+  /* Buttons inside table */
+  .btn-sm { padding: .25rem .6rem; font-size: .78rem; }
+  .btn-warning { background: #f59e0b; color: #fff; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; }
+  .btn-warning:hover { background: #d97706; }
+  .pa-local-file { font-size: .75rem; color: #64748b; font-family: monospace; }
+
+  /* Loading / error */
+  .pa-loading { display: flex; align-items: center; gap: .6rem; color: #475569; margin-top: 1rem; font-size: .9rem; }
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid #cbd5e1;
+    border-top-color: #6366f1; border-radius: 50%;
+    animation: spin .7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .pa-error { color: #dc2626; font-size: .85rem; margin-top: .75rem; padding: .6rem .9rem; background: #fef2f2; border-radius: 6px; }
+  .pa-no-results { color: #64748b; font-style: italic; font-size: .85rem; padding: .4rem 0; }
+
+  /* Pagination note */
+  .pa-count-note { font-size: .78rem; color: #94a3b8; margin: .25rem 0 0; }
+
+  /* CORS fallback notice */
+  .pa-cors-notice {
+    background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;
+    padding: .85rem 1rem; display: flex; flex-direction: column; gap: .6rem;
+  }
+  .pa-cors-notice p { margin: 0; font-size: .85rem; color: #0c4a6e; }
+
+  .hidden { display: none !important; }
+</style>
+
+<!-- Backdrop overlay -->
+<div id="pa-backdrop"></div>
+
+<!-- Toggle tab on right edge -->
+<button id="pa-toggle-tab" title="Open PanelApp Panel Manager">
+  <span class="pa-tab-icon">🧬</span>
+  <span class="pa-tab-label">PanelApp</span>
+</button>
+
+<section id="step-panelapp">
+  <!-- Panel header -->
+  <div class="pa-panel-header">
+    <h2 style="display:flex;align-items:center;gap:.5rem">
+      <span class="step-badge pa-badge">PA</span>
+      PanelApp Panel Manager
+    </h2>
+    <button id="pa-close-btn" title="Close panel">×</button>
+  </div>
+
+  <p class="hint" style="margin-bottom:.85rem;flex-shrink:0">
+    Search <strong>AU</strong> &amp; <strong>UK</strong> PanelApp for panels matching the proband's
+    phenotype. Compare against your local directory; download outdated panels.
+    <strong>Not included</strong> in the Emedgene CSV.<br>
+    <span style="color:#64748b;font-size:.8rem">💡 AU uses disorder names — UK uses R-codes (search by panel name).</span>
+  </p>
+
+  <div class="pa-controls" style="flex-shrink:0">
+    <!-- Import from proband + Push to Clinical Notes -->
+    <div class="pa-import-row">
+      <button id="pa-import-btn">⬇ Import from proband</button>
+      <button id="pa-push-btn" disabled title="Select panels first, then push to Clinical Notes">
+        ↑ Push to Clinical Notes <span class="pa-push-count" id="pa-push-count" style="display:none"></span>
+      </button>
+    </div>
+    <span id="pa-import-hint" class="pa-import-hint">interact with a case first</span>
+    <!-- Search row -->
+    <div class="pa-search-row">
+      <div class="pa-suggest-wrap">
+        <div class="form-group" style="margin-bottom:0">
+          <label for="pa-search-input">Disease / phenotype keyword</label>
+          <input type="text" id="pa-search-input" autocomplete="off"
+            placeholder="e.g. Retinitis pigmentosa; Nystagmus (semicolon = OR)" />
+        </div>
+        <div id="pa-suggestions" class="pa-suggestions hidden"></div>
+      </div>
+      <button class="btn btn-primary" id="pa-search-btn" style="white-space:nowrap;align-self:flex-end">
+        Search
+      </button>
+    </div>
+    <!-- Local directory row -->
+    <div class="pa-dir-row">
+      <button id="pa-dir-btn" class="btn btn-secondary" style="font-size:.82rem">
+        Local Panel Directory
+      </button>
+      <input type="file" id="pa-dir-input" webkitdirectory multiple hidden />
+      <span id="pa-dir-label" class="pa-dir-label">None selected</span>
+    </div>
+  </div>
+
+  <!-- Loading indicator -->
+  <div id="pa-loading" class="pa-loading hidden">
+    <span class="spinner"></span>
+    <span id="pa-loading-msg">Fetching all panels from AU &amp; UK…</span>
+  </div>
+
+  <!-- Error -->
+  <div id="pa-error" class="pa-error hidden"></div>
+
+  <!-- Results -->
+  <div id="pa-results" class="pa-results hidden">
+    <div class="pa-legend">
+      <span class="pa-tag pa-up-to-date">Up to date</span>
+      <span class="pa-tag pa-needs-update">Needs update</span>
+      <span class="pa-tag pa-not-local">Not downloaded</span>
+    </div>
+
+    <div id="pa-au-section">
+      <h3 class="pa-source-heading">
+        PanelApp Australia
+        <span class="pa-source-tag tag-au">AU · AGHA</span>
+      </h3>
+      <div id="pa-au-count" class="pa-count-note"></div>
+      <div id="pa-au-table-wrap"></div>
+    </div>
+
+    <div id="pa-uk-section" style="margin-top:1.25rem">
+      <h3 class="pa-source-heading">
+        PanelApp UK
+        <span class="pa-source-tag tag-uk">UK · Genomics England</span>
+      </h3>
+      <div id="pa-uk-count" class="pa-count-note"></div>
+      <div id="pa-uk-table-wrap"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  const AU_BASE = 'https://panelapp-aus.org/api/v1';
+  const AU_WEB  = 'https://panelapp-aus.org/panels/';
+  const UK_BASE = 'https://panelapp.genomicsengland.co.uk/api/v1';
+  const UK_WEB  = 'https://panelapp.genomicsengland.co.uk/panels/';
+  const PAGE_SIZE = 100;
+
+  // HTML-escape helper (local to this IIFE — esc() in HPO IIFE is a separate scope)
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let localFiles = [];
+  let dirHandle  = null; // FileSystemDirectoryHandle — set when showDirectoryPicker succeeds
+
+  // ── Version helpers ───────────────────────────────────────────────────────────
+
+  function extractVersion(filename) {
+    const m = filename.match(/version\s+(\d+(?:\.\d+)+)/i)
+           || filename.match(/[_\-\sv](\d+\.\d+(?:\.\d+)?)\b/i)
+           || filename.match(/(\d+\.\d+(?:\.\d+)?)/);
+    return m ? m[1] : null;
+  }
+
+  function versionCompare(a, b) {
+    if (!a) return -1;
+    const pa = a.split('.').map(Number);
+    const pb = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const na = pa[i] || 0, nb = pb[i] || 0;
+      if (na !== nb) return na > nb ? 1 : -1;
+    }
+    return 0;
+  }
+
+  // ── Local-file matching ───────────────────────────────────────────────────────
+
+  function findLocal(panel) {
+    const id        = String(panel.id || '');
+    const nameWords = panel.name.toLowerCase()
+      .split(/[\s\-\/()]+/).filter(w => w.length > 3);
+
+    for (const f of localFiles) {
+      const fnLower = f.name.toLowerCase();
+      if (id && fnLower.includes(id)) {
+        return { file: f, localVersion: extractVersion(f.name) };
+      }
+      const threshold = Math.min(2, nameWords.length);
+      if (nameWords.filter(w => fnLower.includes(w)).length >= threshold) {
+        return { file: f, localVersion: extractVersion(f.name) };
+      }
+    }
+    return null;
+  }
+
+  // ── URL builders ─────────────────────────────────────────────────────────────
+
+  function downloadUrl(panel, source) {
+    // 01234 = whole panel (all confidence levels); 34 = green only; 234 = green+amber
+    const base = source === 'AU' ? AU_WEB : UK_WEB;
+    return `${base}${panel.id}/download/01234/`;
+  }
+
+  function panelPageUrl(panel, source) {
+    return (source === 'AU' ? AU_WEB : UK_WEB) + panel.id + '/';
+  }
+
+  // ── Client-side panel filter ─────────────────────────────────────────────────
+  // Neither API supports server-side text search; both return all panels.
+  // We fetch everything and filter locally.
+  //
+  // Query syntax:
+  //   Semicolons / commas = OR  → "Retinitis pigmentosa; Nystagmus"
+  //                               matches panels with RP  OR  Nystagmus
+  //   Spaces within a group = AND → "Retinal dystrophy" requires both words
+  //
+  // termMatches() stem fallback: terms > 7 chars also try first (len-4) chars,
+  // e.g. "dystrophies" → "dystrop" matches "dystrophy".
+
+  function termMatches(hay, term) {
+    if (hay.includes(term)) return true;
+    if (term.length > 7) return hay.includes(term.slice(0, term.length - 4));
+    return false;
+  }
+
+  function filterPanels(panels, query) {
+    // Build OR groups (semicolon/comma-separated), each group ANDs its words
+    const orGroups = query
+      .split(/[;,]+/)
+      .map(g => g.trim().toLowerCase().split(/\s+/).filter(t => t.length > 1))
+      .filter(g => g.length > 0);
+
+    if (!orGroups.length) return panels;
+
+    return panels.filter(p => {
+      const hay = [
+        p.name,
+        ...(p.relevant_disorders || []),
+        p.disease_group     || '',
+        p.disease_sub_group || '',
+        p.description       || '',
+      ].join(' ').toLowerCase();
+
+      // Panel matches if ANY OR-group has ALL its terms present
+      return orGroups.some(terms => terms.every(term => termMatches(hay, term)));
+    });
+  }
+
+  // ── Fetch all panels (all pages in parallel) ──────────────────────────────────
+
+  async function fetchAllPanels(baseUrl) {
+    const firstUrl = `${baseUrl}/panels/?format=json&page_size=${PAGE_SIZE}`;
+    const firstRes = await fetch(firstUrl, { mode: 'cors' });
+    if (!firstRes.ok) throw new Error(`HTTP ${firstRes.status}`);
+    const firstData = await firstRes.json();
+
+    const allResults = firstData.results || [];
+    const total = firstData.count || 0;
+
+    if (!firstData.next || allResults.length >= total) return allResults;
+
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+
+    const rest = await Promise.all(
+      remainingPages.map(async page => {
+        const url = `${baseUrl}/panels/?format=json&page_size=${PAGE_SIZE}&page=${page}`;
+        const res = await fetch(url, { mode: 'cors' });
+        if (!res.ok) throw new Error(`HTTP ${res.status} (page ${page})`);
+        return (await res.json()).results || [];
+      })
+    );
+
+    return allResults.concat(...rest);
+  }
+
+  // ── Panel cache (fetch once, reuse for search + suggestions) ─────────────────
+
+  let panelCache  = null;   // { au: [], uk: [] } once loaded
+  let cachePromise = null;  // single in-flight promise
+
+  function ensureCache() {
+    if (panelCache) return Promise.resolve(panelCache);
+    if (!cachePromise) {
+      cachePromise = Promise.all([
+        fetchAllPanels(AU_BASE).catch(() => []),
+        fetchAllPanels(UK_BASE).catch(() => []),
+      ]).then(([au, uk]) => {
+        panelCache = { au, uk };
+        return panelCache;
+      });
+    }
+    return cachePromise;
+  }
+
+  // ── Compact row renderer (no table — fits panel width) ────────────────────────
+
+  // ── Panel selection state ─────────────────────────────────────────────────────
+  // key: "AU:123" → { name, version, source, disorders }
+
+  let selectedPanels = new Map();
+
+  function selKey(source, id) { return `${source}:${id}`; }
+
+  function updatePushBtn() {
+    const btn      = document.getElementById('pa-push-btn');
+    const countEl  = document.getElementById('pa-push-count');
+    const n = selectedPanels.size;
+    btn.disabled = n === 0;
+    if (n > 0) {
+      countEl.textContent = n;
+      countEl.style.display = '';
+    } else {
+      countEl.style.display = 'none';
+    }
+    btn.title = n > 0
+      ? `Push ${n} selected panel(s) to Clinical Notes of the active proband`
+      : 'Select panels first, then push to Clinical Notes';
+  }
+
+  function renderRows(filtered, total, source, wrapEl, countEl) {
+    countEl.textContent = filtered.length === 0
+      ? `0 of ${total} panels matched`
+      : `${filtered.length} matched (of ${total} total)`;
+
+    if (!filtered.length) {
+      wrapEl.innerHTML = '<p class="pa-no-results">No panels matched. Try a broader term.</p>';
+      return;
+    }
+
+    const html = filtered.map(p => {
+      const local     = findLocal(p);
+      const remoteVer = p.version || '?';
+      const dl        = downloadUrl(p, source);
+      const pageUrl   = panelPageUrl(p, source);
+      const disorders = (p.relevant_disorders || []).filter(d => !/^HP:\d+$|^R\d+$/.test(d)).slice(0, 2).join(', ')
+                     || (p.relevant_disorders || []).slice(0, 2).join(', ')
+                     || '—';
+      const key     = selKey(source, p.id);
+      const checked = selectedPanels.has(key) ? 'checked' : '';
+      const selCls  = selectedPanels.has(key) ? ' pa-selected' : '';
+
+      const fname = dlFilename(p.name, remoteVer);
+
+      let statusHtml, actionHtml;
+      if (!local) {
+        statusHtml = `<span class="pa-tag pa-not-local">Not downloaded</span>`;
+        actionHtml = `<button class="btn btn-sm btn-primary pa-dl-btn"
+          data-url="${esc(dl)}" data-filename="${esc(fname)}">↓ Download v${remoteVer}</button>`;
+      } else if (versionCompare(local.localVersion, remoteVer) >= 0) {
+        statusHtml = `<span class="pa-tag pa-up-to-date">✓ Up to date v${local.localVersion || '?'}</span>`;
+        actionHtml = `<span class="pa-local-file" title="${local.file.name}">📄 ${local.file.name}</span>`;
+      } else {
+        const lv = local.localVersion ? `v${local.localVersion}` : '?';
+        statusHtml = `<span class="pa-tag pa-needs-update">↑ ${lv}→v${remoteVer}</span>`;
+        actionHtml = `<button class="btn btn-sm btn-warning pa-dl-btn"
+          data-url="${esc(dl)}" data-filename="${esc(fname)}">↓ Update v${remoteVer}</button>`;
+      }
+
+      return `<div class="pa-panel-row${selCls}" data-key="${key}">
+        <div class="pa-row-check">
+          <input type="checkbox" class="pa-panel-checkbox"
+            data-key="${key}" data-name="${esc(p.name)}"
+            data-version="${esc(remoteVer)}" data-source="${source}"
+            data-disorders="${esc(disorders)}"
+            ${checked}>
+        </div>
+        <div class="pa-row-content">
+          <div class="pa-row-top">
+            <a class="pa-row-name" href="${pageUrl}" target="_blank" rel="noopener noreferrer"
+               title="Open panel page">${p.name}</a>
+            ${statusHtml}
+          </div>
+          <div class="pa-row-bottom">
+            <span class="pa-row-meta">v${remoteVer} · ${disorders}</span>
+            ${actionHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    wrapEl.innerHTML = `<div class="pa-panel-list">${html}</div>`;
+
+    // Wire up checkboxes
+    wrapEl.querySelectorAll('.pa-panel-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const row = cb.closest('.pa-panel-row');
+        if (cb.checked) {
+          selectedPanels.set(cb.dataset.key, {
+            name: cb.dataset.name,
+            version: cb.dataset.version,
+            source: cb.dataset.source,
+            disorders: cb.dataset.disorders,
+          });
+          row.classList.add('pa-selected');
+        } else {
+          selectedPanels.delete(cb.dataset.key);
+          row.classList.remove('pa-selected');
+        }
+        updatePushBtn();
+      });
+    });
+
+    // Wire up download buttons
+    wrapEl.querySelectorAll('.pa-dl-btn').forEach(btn => {
+      btn.addEventListener('click', () => handleDownload(btn.dataset.url, btn.dataset.filename, btn));
+    });
+  }
+
+  // ── Push selected panels to Clinical Notes ────────────────────────────────────
+
+  function pushToClinicalNotes() {
+    if (!selectedPanels.size) return;
+
+    updateImportBtn(); // refresh active case
+    const scope = lastActiveCaseEl || document;
+
+    const allRows = Array.from(scope.querySelectorAll('.sample-row'));
+    const probandRow = allRows.find(row => {
+      const rel = row.querySelector('select[name="relation"]');
+      return rel && rel.value === 'proband';
+    }) || allRows[0];
+
+    if (!probandRow) {
+      alert('No case configured. Add a case first.');
+      return;
+    }
+
+    const notesEl = probandRow.querySelector('textarea[name="clinical_notes"]');
+    if (!notesEl) return;
+
+    const caseNum = lastActiveCaseEl?.querySelector('.case-num')?.textContent?.trim() || '';
+    const date    = new Date().toISOString().slice(0, 10);
+
+    const lines = [...selectedPanels.values()].map(p =>
+      `[${p.source}] ${p.name.replace(/\s+/g, '')}`
+    ).join('; ');
+
+    const block = `\nPanelApp (${date}): ${lines}`;
+
+    // Append to existing notes (avoid duplicate blocks)
+    const existing = notesEl.value;
+    notesEl.value = existing
+      ? existing.replace(/\nPanelApp \(\d{4}-\d{2}-\d{2}\):.*$/, '') + block
+      : block.trim();
+
+    notesEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Visual feedback — flash the textarea border green briefly
+    notesEl.style.outline = '2px solid #10b981';
+    notesEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { notesEl.style.outline = ''; }, 1500);
+  }
+
+  // ── Real-time suggestions ─────────────────────────────────────────────────────
+
+  const sugEl = () => document.getElementById('pa-suggestions');
+
+  function hideSuggestions() {
+    sugEl().classList.add('hidden');
+    sugEl().innerHTML = '';
+  }
+
+  function showSuggestions(items) {
+    const el = sugEl();
+    if (!items.length) { hideSuggestions(); return; }
+    el.innerHTML = items.map(s =>
+      `<div class="pa-sug-item" data-name="${s.name.replace(/"/g,'&quot;')}">
+        <span class="pa-sug-name">${s.name}</span>
+        <span class="pa-sug-tag ${s.src === 'AU' ? 'tag-au' : 'tag-uk'}">${s.src}</span>
+       </div>`
+    ).join('');
+    el.classList.remove('hidden');
+
+    el.querySelectorAll('.pa-sug-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault(); // prevent blur before click
+        const name = item.dataset.name;
+        document.getElementById('pa-search-input').value = name;
+        hideSuggestions();
+        doSearch();
+      });
+    });
+  }
+
+  function updateSuggestions() {
+    const raw = document.getElementById('pa-search-input').value;
+    // Suggest based on the last semicolon-separated segment being typed
+    const lastSegment = raw.split(/[;,]/).pop().trim();
+    if (lastSegment.length < 2) { hideSuggestions(); return; }
+
+    if (!panelCache) {
+      sugEl().innerHTML = '<div class="pa-sug-loading">Loading panel list…</div>';
+      sugEl().classList.remove('hidden');
+      return;
+    }
+
+    const term = lastSegment.toLowerCase();
+    const seen = new Set();
+    const results = [];
+
+    for (const src of ['AU', 'UK']) {
+      const list = src === 'AU' ? panelCache.au : panelCache.uk;
+      for (const p of list) {
+        const key = p.name.toLowerCase();
+        if (!seen.has(key) && key.includes(term)) {
+          seen.add(key);
+          results.push({ name: p.name, src });
+          if (results.length >= 8) break;
+        }
+      }
+      if (results.length >= 8) break;
+    }
+
+    showSuggestions(results);
+  }
+
+  // ── Main search (uses cache — instant after first load) ───────────────────────
+
+  async function doSearch() {
+    const query = (document.getElementById('pa-search-input').value || '').trim();
+    if (!query) { alert('Please enter a disease or phenotype keyword to search.'); return; }
+
+    hideSuggestions();
+    selectedPanels.clear();   // reset selections on each new search
+    updatePushBtn();
+
+    const loadingEl = document.getElementById('pa-loading');
+    const resultsEl = document.getElementById('pa-results');
+    const errorEl   = document.getElementById('pa-error');
+
+    loadingEl.classList.remove('hidden');
+    resultsEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+
+    const cache = await ensureCache();
+    loadingEl.classList.add('hidden');
+
+    if (!cache.au.length && !cache.uk.length) {
+      errorEl.textContent = 'Failed to load panel data. Check your network and try again.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    renderRows(filterPanels(cache.au, query), cache.au.length, 'AU',
+      document.getElementById('pa-au-table-wrap'),
+      document.getElementById('pa-au-count'));
+
+    renderRows(filterPanels(cache.uk, query), cache.uk.length, 'UK',
+      document.getElementById('pa-uk-table-wrap'),
+      document.getElementById('pa-uk-count'));
+
+    resultsEl.classList.remove('hidden');
+  }
+
+  // ── Directory picker ──────────────────────────────────────────────────────────
+
+  const PANEL_EXTS = new Set(['.tsv', '.csv', '.txt', '.json', '.xlsx']);
+
+  function fileExt(name) {
+    const i = name.lastIndexOf('.');
+    return i >= 0 ? name.slice(i).toLowerCase() : '';
+  }
+
+  function dlFilename(panelName, version) {
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `${panelName}_v${version}(Downloaded:${date}).tsv`.replace(/\s+/g, '');
+  }
+
+  async function loadFilesFromDirHandle() {
+    if (!dirHandle) return;
+    localFiles = [];
+    for await (const [name, handle] of dirHandle.entries()) {
+      if (handle.kind === 'file' && PANEL_EXTS.has(fileExt(name))) {
+        localFiles.push(await handle.getFile());
+      }
+    }
+    const label = document.getElementById('pa-dir-label');
+    label.textContent = localFiles.length
+      ? `${localFiles.length} file(s) — ${dirHandle.name}`
+      : `No panel files found — ${dirHandle.name}`;
+    label.style.color = localFiles.length ? '#15803d' : '#92400e';
+  }
+
+  async function pickDirectory() {
+    if ('showDirectoryPicker' in window) {
+      try {
+        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        await loadFilesFromDirHandle();
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;        // user cancelled
+        console.warn('showDirectoryPicker unavailable, falling back:', e.message);
+      }
+    }
+    // Fallback: read-only file input (file:// or older browsers)
+    dirHandle = null;
+    document.getElementById('pa-dir-input').click();
+  }
+
+  async function handleDownload(url, filename, btnEl) {
+    if (dirHandle) {
+      // Save directly to the selected local directory
+      const origText = btnEl.textContent;
+      try {
+        btnEl.disabled   = true;
+        btnEl.textContent = '⏳ Saving…';
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob       = await res.blob();
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable   = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        btnEl.textContent = '✓ Saved';
+        await loadFilesFromDirHandle(); // refresh status badges
+        const q = document.getElementById('pa-search-input').value.trim();
+        if (q) doSearch();
+        setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+        return;
+      } catch (e) {
+        console.error('Directory save failed:', e);
+        btnEl.disabled   = false;
+        btnEl.textContent = origText;
+        // fall through to standard download
+      }
+    }
+    // Standard browser download (no directory selected, or save failed)
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function initDirPicker() {
+    document.getElementById('pa-dir-btn').addEventListener('click', pickDirectory);
+    // Fallback file input (read-only; used when showDirectoryPicker is unavailable)
+    const dirInput = document.getElementById('pa-dir-input');
+    const label    = document.getElementById('pa-dir-label');
+    dirInput.addEventListener('change', () => {
+      dirHandle  = null;
+      localFiles = Array.from(dirInput.files).filter(f => PANEL_EXTS.has(fileExt(f.name)));
+      label.textContent = localFiles.length
+        ? `${localFiles.length} file(s) loaded (read-only — version check only)`
+        : 'No panel files found in selected directory';
+      label.style.color = localFiles.length ? '#15803d' : '#92400e';
+    });
+  }
+
+  // ── Panel toggle ──────────────────────────────────────────────────────────────
+
+  function openPanel() {
+    document.getElementById('step-panelapp').classList.add('pa-open');
+    document.body.classList.add('pa-panel-open');
+    document.getElementById('pa-toggle-tab').style.display = 'none';
+    // Pre-warm cache in background so suggestions are ready when user starts typing
+    ensureCache();
+  }
+
+  function closePanel() {
+    document.getElementById('step-panelapp').classList.remove('pa-open');
+    document.body.classList.remove('pa-panel-open');
+    document.getElementById('pa-toggle-tab').style.display = '';
+  }
+
+  // ── Track which case the user last interacted with ───────────────────────────
+  // Updated automatically via focusin on #cases-container — no user action needed.
+
+  let lastActiveCaseEl = null;
+
+  function updateImportBtn() {
+    const btn  = document.getElementById('pa-import-btn');
+    const hint = document.getElementById('pa-import-hint');
+    if (!btn) return;
+
+    if (!lastActiveCaseEl || !lastActiveCaseEl.isConnected) {
+      // No case focused yet — fall back to first case
+      const first = document.querySelector('.case-block');
+      lastActiveCaseEl = first || null;
+    }
+
+    if (!lastActiveCaseEl) {
+      btn.textContent  = '⬇ Import from proband';
+      if (hint) hint.textContent = 'interact with a case first';
+      return;
+    }
+
+    const caseNum = lastActiveCaseEl.querySelector('.case-num')?.textContent?.trim() || '?';
+    btn.textContent  = `⬇ Import from Case ${caseNum}`;
+    if (hint) hint.textContent = `proband phenotype from Case ${caseNum}`;
+  }
+
+  // ── Import phenotype from the tracked case's proband ─────────────────────────
+
+  function importFromProband() {
+    updateImportBtn(); // ensure lastActiveCaseEl is fresh
+
+    const scope = lastActiveCaseEl || document;
+
+    // Find proband sample row within scope; fall back to first row
+    const allRows = Array.from(scope.querySelectorAll('.sample-row'));
+    const probandRow = allRows.find(row => {
+      const rel = row.querySelector('select[name="relation"]');
+      return rel && rel.value === 'proband';
+    }) || allRows[0];
+
+    if (!probandRow) {
+      alert('No cases configured yet. Add a case and fill in the Phenotypes field first.');
+      return;
+    }
+
+    const phenoInput = probandRow.querySelector('input[name="phenotypes"]');
+    const rawValue   = phenoInput ? phenoInput.value.trim() : '';
+
+    if (!rawValue || rawValue.toLowerCase() === 'unaffected') {
+      const caseNum = lastActiveCaseEl?.querySelector('.case-num')?.textContent?.trim() || '';
+      alert(`No phenotype found on the proband of Case ${caseNum}. Fill in the Phenotypes field first.`);
+      return;
+    }
+
+    // Strip HP IDs — keep only human-readable term names as OR-separated search terms
+    const terms = rawValue
+      .split(/[;,]+/)
+      .map(t => t.trim().replace(/\s*\(HP:\d+\)\s*$/i, '').trim())
+      .filter(t => t && !/^HP:\d+$/i.test(t));
+
+    const searchVal = terms.length ? terms.join('; ') : rawValue;
+    document.getElementById('pa-search-input').value = searchVal;
+    document.getElementById('pa-search-input').dispatchEvent(new Event('input'));
+    document.getElementById('pa-search-input').focus();
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────────
+
+  function init() {
+    const searchInput = document.getElementById('pa-search-input');
+
+    document.getElementById('pa-search-btn').addEventListener('click', doSearch);
+
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+      if (e.key === 'Escape') hideSuggestions();
+    });
+
+    // Real-time suggestions
+    searchInput.addEventListener('input', updateSuggestions);
+    searchInput.addEventListener('focus', updateSuggestions);
+    searchInput.addEventListener('blur', () => {
+      setTimeout(hideSuggestions, 150);
+    });
+
+    // Track the last interacted case automatically
+    const casesContainer = document.getElementById('cases-container');
+    casesContainer.addEventListener('focusin', e => {
+      const caseBlock = e.target.closest('.case-block');
+      if (caseBlock && caseBlock !== lastActiveCaseEl) {
+        lastActiveCaseEl = caseBlock;
+        updateImportBtn();
+      }
+    });
+
+    document.getElementById('pa-toggle-tab').addEventListener('click', () => {
+      updateImportBtn(); // refresh label when panel opens
+      openPanel();
+    });
+    document.getElementById('pa-close-btn').addEventListener('click', closePanel);
+    document.getElementById('pa-import-btn').addEventListener('click', importFromProband);
+    document.getElementById('pa-push-btn').addEventListener('click', pushToClinicalNotes);
+    initDirPicker();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}());
+</script>
+
+<!-- ===================== HPO PHENOTYPE AUTOCOMPLETE ===================== -->
+<style>
+  .hpo-sug-wrap { position: relative; }
+  .hpo-suggestions {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: #fff; border: 1px solid #c4b5fd;
+    border-top: none; border-radius: 0 0 8px 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    z-index: 500; max-height: 280px; overflow-y: auto;
+  }
+  .hpo-sug-header {
+    padding: .3rem .7rem; font-size: .68rem; font-weight: 700;
+    letter-spacing: .06em; color: #94a3b8; background: #faf5ff;
+    border-bottom: 1px solid #ede9fe; text-transform: uppercase;
+  }
+  .hpo-sug-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .42rem .7rem; cursor: pointer; font-size: .82rem;
+    border-bottom: 1px solid #f8fafc; gap: .5rem;
+  }
+  .hpo-sug-item:last-child { border-bottom: none; }
+  .hpo-sug-item:hover { background: #f5f3ff; }
+  .hpo-sug-name { flex: 1; color: #1e293b; }
+  .hpo-sug-name strong { color: #7c3aed; }
+  .hpo-sug-id {
+    font-size: .72rem; color: #6366f1; font-family: monospace;
+    white-space: nowrap; background: #eef2ff;
+    padding: .1rem .3rem; border-radius: 4px; flex-shrink: 0;
+  }
+  .hpo-sug-loading {
+    padding: .5rem .7rem; font-size: .8rem;
+    color: #94a3b8; font-style: italic;
+  }
+
+  /* ── Batch add controls ──────────────────────────────────────────────────── */
+  .batch-add-controls {
+    display: flex; align-items: center; gap: .5rem;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .batch-add-controls label {
+    font-size: .75rem; color: #64748b; margin: 0; font-weight: 500;
+  }
+  .batch-add-controls input {
+    width: 50px; padding: .4rem .45rem;
+    font-size: .82rem; font-weight: 500;
+    border: 1px solid #cbd5e1; border-radius: 6px;
+    text-align: center;
+  }
+  .batch-add-controls input:focus {
+    outline: none; border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+  }
+  .batch-add-controls button {
+    padding: .4rem .7rem; font-size: .78rem; white-space: nowrap;
+  }
+
+  /* ── HPO phenotype pills ────────────────────────────────────────────────── */
+  .hpo-pills-container {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    margin-top: .5rem; min-height: 0;
+  }
+  .hpo-pill {
+    display: inline-flex; align-items: center; gap: .35rem;
+    background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd;
+    padding: .3rem .5rem; border-radius: 999px; font-size: .78rem;
+    font-weight: 500;
+  }
+  .hpo-pill-id {
+    font-family: monospace; font-size: .7rem; font-weight: 600;
+    opacity: .8;
+  }
+  .hpo-pill-remove {
+    background: none; border: none; cursor: pointer;
+    font-size: .85rem; color: #a78bfa; padding: 0;
+    line-height: 1; margin-left: .2rem;
+  }
+  .hpo-pill-remove:hover { color: #6d28d9; }
+  .hpo-pills-empty {
+    font-size: .8rem; color: #94a3b8; font-style: italic;
+    margin-top: .25rem;
+  }
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  const HPO_API = 'https://ontology.jax.org/api/hp/search';
+
+  // ── String helpers ────────────────────────────────────────────────────────────
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function highlight(text, query) {
+    if (!query) return esc(text);
+    const i = text.toLowerCase().indexOf(query.toLowerCase());
+    if (i < 0) return esc(text);
+    return esc(text.slice(0, i))
+         + '<strong>' + esc(text.slice(i, i + query.length)) + '</strong>'
+         + esc(text.slice(i + query.length));
+  }
+
+  // Active segment = the text after the last semicolon (what user is currently typing)
+  function activeSegment(val) {
+    return val.split(/;/).pop().trim();
+  }
+
+  // Replace the active segment with the chosen term, append '; '
+  function commitTerm(val, termLabel) {
+    const parts = val.split(/;/);
+    parts[parts.length - 1] = ' ' + termLabel;
+    return parts.join(';').replace(/^\s*;\s*/, '') + '; ';
+  }
+
+  // ── Dropdown ──────────────────────────────────────────────────────────────────
+
+  function hide(dd) {
+    dd.classList.add('hidden');
+    dd.innerHTML = '';
+  }
+
+  function show(dd, terms, query, input) {
+    if (!terms.length) { hide(dd); return; }
+
+    dd.innerHTML =
+      `<div class="hpo-sug-header">HPO Phenotypes — ${terms.length} of ${dd.dataset.total || terms.length}</div>` +
+      terms.map(t =>
+        `<div class="hpo-sug-item" data-id="${esc(t.id)}" data-name="${esc(t.name)}">
+           <span class="hpo-sug-name">${highlight(t.name, query)}</span>
+           <span class="hpo-sug-id">${esc(t.id)}</span>
+         </div>`
+      ).join('');
+
+    dd.classList.remove('hidden');
+
+    dd.querySelectorAll('.hpo-sug-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = commitTerm(input.value, `${item.dataset.name} (${item.dataset.id})`);
+        hide(dd);
+        input.focus();
+        // Notify main app of the change (updates CSV preview)
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+  }
+
+  // ── API call (debounced) ──────────────────────────────────────────────────────
+
+  async function searchHpo(query, dd, input) {
+    try {
+      const url = `${HPO_API}?q=${encodeURIComponent(query)}&limit=10`;
+      const res  = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      dd.dataset.total = data.totalCount || '';
+      show(dd, (data.terms || []).slice(0, 8), query, input);
+    } catch {
+      hide(dd);
+    }
+  }
+
+  // ── Parse HPO terms from input string (format: "Name (HP:XXXXXX); Name2 (HP:YYYYYY)") ──
+
+  function parseHpoTerms(input) {
+    const terms = [];
+    const regex = /([^();]+?)\s*\((\bHP:\d{7})\)/g;
+    let match;
+    while ((match = regex.exec(input)) !== null) {
+      terms.push({ name: match[1].trim(), id: match[2] });
+    }
+    return terms;
+  }
+
+  // ── Render HPO pills ──────────────────────────────────────────────────────
+
+  function renderPills(pillsContainer, input) {
+    const terms = parseHpoTerms(input.value);
+    if (!terms.length) {
+      pillsContainer.innerHTML = '<div class="hpo-pills-empty">No HPO terms selected</div>';
+      return;
+    }
+    pillsContainer.innerHTML = terms.map((t, i) => `
+      <div class="hpo-pill">
+        <span>${esc(t.name)}</span>
+        <span class="hpo-pill-id">${esc(t.id)}</span>
+        <button type="button" class="hpo-pill-remove" data-index="${i}" title="Remove term">×</button>
+      </div>
+    `).join('');
+
+    // Wire up remove buttons
+    pillsContainer.querySelectorAll('.hpo-pill-remove').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        const idx = parseInt(btn.dataset.index, 10);
+        const remaining = terms.filter((_, i) => i !== idx);
+        input.value = remaining.length
+          ? remaining.map(t => `${t.name} (${t.id}); `).join('') + ' '
+          : '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+  }
+
+  // ── Attach to one input ───────────────────────────────────────────────────────
+
+  function attach(input) {
+    if (input._hpoReady) return;
+    input._hpoReady = true;
+
+    // Wrap the input to allow absolute positioning of dropdown
+    const wrap = document.createElement('div');
+    wrap.className = 'hpo-sug-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const dd = document.createElement('div');
+    dd.className = 'hpo-suggestions hidden';
+    wrap.appendChild(dd);
+
+    // Pill display below input
+    const pillsContainer = document.createElement('div');
+    pillsContainer.className = 'hpo-pills-container';
+    wrap.appendChild(pillsContainer);
+
+    let timer = null;
+
+    function updatePills() {
+      renderPills(pillsContainer, input);
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      updatePills();
+      const seg = activeSegment(input.value);
+      if (seg.length < 2) { hide(dd); return; }
+      dd.innerHTML = '<div class="hpo-sug-loading">Searching HPO…</div>';
+      dd.classList.remove('hidden');
+      timer = setTimeout(() => searchHpo(seg, dd, input), 280);
+    });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape') hide(dd);
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => hide(dd), 160); // allow mousedown on item to fire first
+    });
+
+    // Initial render
+    updatePills();
+  }
+
+  // ── MutationObserver: wire up every phenotype input that ever gets added ──────
+
+  function scan(root) {
+    root.querySelectorAll('input[name="phenotypes"]').forEach(attach);
+  }
+
+  const obs = new MutationObserver(mutations => {
+    for (const m of mutations)
+      for (const node of m.addedNodes)
+        if (node.nodeType === 1) scan(node);
+  });
+
+  function init() {
+    const container = document.getElementById('cases-container');
+    if (!container) return;
+    obs.observe(container, { childList: true, subtree: true });
+    scan(container); // attach to any inputs already present
+  }
+
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', init)
+    : init();
+}());
+</script>
+</body>
+</html>
