@@ -775,7 +775,8 @@
       if (!local) {
         statusHtml = `<span class="pa-tag pa-not-local">Not downloaded</span>`;
         actionHtml = `<button class="btn btn-sm btn-primary pa-dl-btn"
-          data-url="${esc(dl)}" data-filename="${esc(fname)}">↓ Download v${remoteVer}</button>`;
+          data-id="${p.id}" data-name="${esc(p.name)}" data-version="${esc(remoteVer)}"
+          data-source="${source}" data-filename="${esc(fname)}">↓ Download v${remoteVer}</button>`;
       } else if (versionCompare(local.localVersion, remoteVer) >= 0) {
         statusHtml = `<span class="pa-tag pa-up-to-date">✓ Up to date v${local.localVersion || '?'}</span>`;
         actionHtml = `<span class="pa-local-file" title="${local.file.name}">📄 ${local.file.name}</span>`;
@@ -783,7 +784,8 @@
         const lv = local.localVersion ? `v${local.localVersion}` : '?';
         statusHtml = `<span class="pa-tag pa-needs-update">↑ ${lv}→v${remoteVer}</span>`;
         actionHtml = `<button class="btn btn-sm btn-warning pa-dl-btn"
-          data-url="${esc(dl)}" data-filename="${esc(fname)}">↓ Update v${remoteVer}</button>`;
+          data-id="${p.id}" data-name="${esc(p.name)}" data-version="${esc(remoteVer)}"
+          data-source="${source}" data-filename="${esc(fname)}">↓ Update v${remoteVer}</button>`;
       }
 
       return `<div class="pa-panel-row${selCls}" data-key="${key}">
@@ -832,7 +834,10 @@
 
     // Wire up download buttons
     wrapEl.querySelectorAll('.pa-dl-btn').forEach(btn => {
-      btn.addEventListener('click', () => handleDownload(btn.dataset.url, btn.dataset.filename, btn));
+      btn.addEventListener('click', () => handleDownload(
+        btn.dataset.id, btn.dataset.name, btn.dataset.version,
+        btn.dataset.source, btn.dataset.filename, btn
+      ));
     });
   }
 
@@ -1028,35 +1033,71 @@
     document.getElementById('pa-dir-input').click();
   }
 
-  async function handleDownload(url, filename, btnEl) {
+  // Fetch all genes for a panel via the CORS-enabled API (paginated)
+  async function fetchAllGenes(apiBase, panelId) {
+    const genes = [];
+    let url = `${apiBase}/panels/${panelId}/genes/?format=json&page_size=200`;
+    while (url) {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      genes.push(...(data.results || []));
+      url = data.next || null;
+    }
+    return genes;
+  }
+
+  // Build a TSV string from the API gene list
+  function buildGeneTsv(genes, panelName, version, source) {
+    const headers = [
+      'Gene Symbol', 'Entity Type', 'Confidence Level',
+      'Mode of Inheritance', 'Phenotypes', 'Publications', 'Panel', 'Source', 'Version'
+    ];
+    const rows = genes.map(g => [
+      g.entity_name || g.gene_data?.gene_symbol || '',
+      g.entity_type  || 'gene',
+      g.confidence_level || '',
+      g.mode_of_inheritance || '',
+      (g.phenotypes    || []).join('; '),
+      (g.publications  || []).join('; '),
+      panelName, source, version,
+    ].map(v => String(v).replace(/\t/g, ' ')).join('\t'));
+    return [headers.join('\t'), ...rows].join('\n');
+  }
+
+  async function handleDownload(panelId, panelName, version, source, filename, btnEl) {
+    const origText = btnEl.textContent;
+
     if (dirHandle) {
-      // Save directly to the selected local directory
-      const origText = btnEl.textContent;
       try {
-        btnEl.disabled   = true;
-        btnEl.textContent = '⏳ Saving…';
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob       = await res.blob();
+        btnEl.disabled    = true;
+        btnEl.textContent = '⏳ Fetching…';
+        const apiBase = source === 'AU' ? AU_BASE : UK_BASE;
+        const genes   = await fetchAllGenes(apiBase, panelId);
+        const tsv     = buildGeneTsv(genes, panelName, version, source);
+
         const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
         const writable   = await fileHandle.createWritable();
-        await writable.write(blob);
+        await writable.write(new Blob([tsv], { type: 'text/tab-separated-values' }));
         await writable.close();
+
         btnEl.textContent = '✓ Saved';
-        await loadFilesFromDirHandle(); // refresh status badges
+        await loadFilesFromDirHandle();
         const q = document.getElementById('pa-search-input').value.trim();
         if (q) doSearch();
         setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
         return;
       } catch (e) {
         console.error('Directory save failed:', e);
-        btnEl.disabled   = false;
+        btnEl.disabled    = false;
         btnEl.textContent = origText;
-        // fall through to standard download
+        // fall through to standard browser download
       }
     }
-    // Standard browser download (no directory selected, or save failed)
-    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+
+    // Fallback: standard browser download (no directory selected, or save failed)
+    const dl = (source === 'AU' ? AU_WEB : UK_WEB) + panelId + '/download/01234/';
+    const a  = Object.assign(document.createElement('a'), { href: dl, download: filename });
     a.target = '_blank';
     document.body.appendChild(a);
     a.click();
