@@ -365,23 +365,19 @@
   .pa-row-check input[type="checkbox"] {
     width: 15px; height: 15px; accent-color: #7c3aed; cursor: pointer;
   }
-  .pa-row-content { display: flex; flex-direction: column; gap: .25rem; }
-  .pa-row-top {
-    display: flex; align-items: flex-start;
-    justify-content: space-between; gap: .5rem;
-  }
-  .pa-row-bottom {
-    display: flex; align-items: center;
-    justify-content: space-between; gap: .5rem;
-  }
+  .pa-row-content { display: flex; flex-direction: column; gap: .2rem; }
   .pa-row-name {
     font-weight: 600; font-size: .875rem; color: #1e293b;
-    text-decoration: none; flex: 1; line-height: 1.3;
+    text-decoration: none; line-height: 1.3; display: block;
   }
   .pa-row-name:hover { color: #6d28d9; text-decoration: underline; }
   .pa-row-meta {
     font-size: .75rem; color: #94a3b8;
-    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pa-row-actions {
+    display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+    margin-top: .15rem;
   }
 
   /* Push to Clinical Notes button */
@@ -797,13 +793,11 @@
             ${checked}>
         </div>
         <div class="pa-row-content">
-          <div class="pa-row-top">
-            <a class="pa-row-name" href="${pageUrl}" target="_blank" rel="noopener noreferrer"
-               title="Open panel page">${p.name}</a>
+          <a class="pa-row-name" href="${pageUrl}" target="_blank" rel="noopener noreferrer"
+             title="Open panel page">${p.name}</a>
+          <span class="pa-row-meta">v${remoteVer} · ${disorders}</span>
+          <div class="pa-row-actions">
             ${statusHtml}
-          </div>
-          <div class="pa-row-bottom">
-            <span class="pa-row-meta">v${remoteVer} · ${disorders}</span>
             ${actionHtml}
           </div>
         </div>
