@@ -1011,10 +1011,9 @@
       }
     }
     const label = document.getElementById('pa-dir-label');
-    label.textContent = localFiles.length
-      ? `${localFiles.length} file(s) — ${dirHandle.name}`
-      : `No panel files found — ${dirHandle.name}`;
-    label.style.color = localFiles.length ? '#15803d' : '#92400e';
+    label.textContent = `📁 ${dirHandle.name}  (${localFiles.length} panel file(s))`;
+    label.style.color = '#15803d';
+    label.style.fontWeight = 'bold';
   }
 
   async function pickDirectory() {
@@ -1067,43 +1066,45 @@
 
   async function handleDownload(panelId, panelName, version, source, filename, btnEl) {
     const origText = btnEl.textContent;
+    btnEl.disabled    = true;
+    btnEl.textContent = '⏳ Fetching…';
 
-    if (dirHandle) {
-      try {
-        btnEl.disabled    = true;
-        btnEl.textContent = '⏳ Fetching…';
-        const apiBase = source === 'AU' ? AU_BASE : UK_BASE;
-        const genes   = await fetchAllGenes(apiBase, panelId);
-        const tsv     = buildGeneTsv(genes, panelName, version, source);
+    try {
+      // Always use genes API (CORS-enabled) to build TSV — this also gives us a
+      // blob URL so the download attribute is honoured (blob: is same-origin).
+      const apiBase = source === 'AU' ? AU_BASE : UK_BASE;
+      const genes   = await fetchAllGenes(apiBase, panelId);
+      const tsv     = buildGeneTsv(genes, panelName, version, source);
+      const blob    = new Blob([tsv], { type: 'text/tab-separated-values' });
 
+      if (dirHandle) {
+        // Write directly into the selected local directory
         const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
         const writable   = await fileHandle.createWritable();
-        await writable.write(new Blob([tsv], { type: 'text/tab-separated-values' }));
+        await writable.write(blob);
         await writable.close();
-
-        btnEl.textContent = '✓ Saved';
+        btnEl.textContent = `✓ Saved → ${dirHandle.name}/`;
         await loadFilesFromDirHandle();
         const q = document.getElementById('pa-search-input').value.trim();
         if (q) doSearch();
-        setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
-        return;
-      } catch (e) {
-        console.error('Directory save failed:', e);
-        btnEl.disabled    = false;
-        // Show the actual error on the button for 4s so user can see why
-        btnEl.textContent = '⚠ ' + e.message;
-        setTimeout(() => { btnEl.textContent = origText; }, 4000);
-        // fall through to standard browser download
+      } else {
+        // No directory selected — download via blob URL so filename is preserved
+        const blobUrl = URL.createObjectURL(blob);
+        const a = Object.assign(document.createElement('a'), { href: blobUrl, download: filename });
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        btnEl.textContent = '✓ Downloaded';
       }
-    }
 
-    // Fallback: standard browser download (no directory selected, or save failed)
-    const dl = (source === 'AU' ? AU_WEB : UK_WEB) + panelId + '/download/01234/';
-    const a  = Object.assign(document.createElement('a'), { href: dl, download: filename });
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+      setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2500);
+    } catch (e) {
+      console.error('Download failed:', e);
+      btnEl.disabled    = false;
+      btnEl.textContent = '⚠ ' + e.message;
+      setTimeout(() => { btnEl.textContent = origText; }, 5000);
+    }
   }
 
   function initDirPicker() {
