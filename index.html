@@ -867,7 +867,7 @@
     const date    = new Date().toISOString().slice(0, 10);
 
     const lines = [...selectedPanels.values()].map(p =>
-      `[${p.source}] ${p.name.replace(/\s+/g, '')}`
+      `[${p.source}] ${dlFilename(p.name, p.version).replace(/\.tsv$/i, '')}`
     ).join('; ');
 
     const block = `\nPanelApp (${date}): ${lines}`;
@@ -1090,7 +1090,9 @@
       } catch (e) {
         console.error('Directory save failed:', e);
         btnEl.disabled    = false;
-        btnEl.textContent = origText;
+        // Show the actual error on the button for 4s so user can see why
+        btnEl.textContent = '⚠ ' + e.message;
+        setTimeout(() => { btnEl.textContent = origText; }, 4000);
         // fall through to standard browser download
       }
     }
